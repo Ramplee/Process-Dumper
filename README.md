@@ -40,3 +40,5 @@ ProcessDumper.exe game.exe -t 0.5
 ## Credits
 
 - Import resolution, exception directory fixing, decryption threshold, and disk fallback features are inspired by [Vulkan](https://github.com/atrexus/vulkan) by [@atrexus](https://github.com/atrexus)
+
+the ReadMe has been generated from claude opus4.6 since I am too lazy :)
