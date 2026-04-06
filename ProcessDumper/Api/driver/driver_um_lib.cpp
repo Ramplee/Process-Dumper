@@ -102,17 +102,7 @@ namespace ioctl {
 		return cmd.status;
 	}
 
-	bool hide_driver(void) {
-		if (!inited || device_handle == INVALID_HANDLE_VALUE)
-			return false;
 
-		command_t cmd = { 0 };
-		cmd.call_type = cmd_remove_from_system_page_tables;
-
-		send_request(&cmd);
-
-		return cmd.status;
-	}
 
 	bool ping_driver(void) {
 		if (!inited || device_handle == INVALID_HANDLE_VALUE)

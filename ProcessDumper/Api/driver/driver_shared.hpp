@@ -53,7 +53,6 @@ enum call_types_t : uint32_t {
 	cmd_get_ldr_data_table_entry_count,
 	cmd_get_data_table_entry_info,
 	cmd_copy_virtual_memory,
-	cmd_remove_from_system_page_tables,
 	cmd_ping_driver,
 };
 

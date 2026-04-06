@@ -263,8 +263,7 @@ NTSTATUS walk_process_modules(uint64_t pid, module_info_t* info_array, uint64_t*
 }
 
 NTSTATUS handle_command(command_t* cmd) {
-	if (!cmd->sub_command_ptr && cmd->call_type != cmd_ping_driver &&
-		cmd->call_type != cmd_remove_from_system_page_tables)
+	if (!cmd->sub_command_ptr && cmd->call_type != cmd_ping_driver)
 		return STATUS_INVALID_PARAMETER;
 
 	switch (cmd->call_type) {

@@ -14,7 +14,6 @@ namespace ioctl {
 	uint64_t get_pid_by_name(const char* name);
 	uint64_t get_ldr_data_table_entry_count(uint64_t pid);
 	bool get_data_table_entry_info(uint64_t pid, module_info_t* info_array);
-	bool hide_driver(void);
 	bool ping_driver(void);
 
 	inline bool init_roseware_lib() {
@@ -39,10 +38,6 @@ namespace ioctl {
 			return false;
 		}
 
-		if (!hide_driver()) {
-			log("Failed to hide driver");
-			return false;
-		}
 
 		return true;
 	}
