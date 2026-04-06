@@ -1,5 +1,6 @@
 #include <ntddk.h>
 #include <intrin.h>
+#include <cstdint>
 
 #ifndef MAX_PATH
 #define MAX_PATH 260
@@ -97,6 +98,8 @@ extern "C" {
 	NTKERNELAPI VOID KeUnstackDetachProcess(PKAPC_STATE ApcState);
 	NTSTATUS ZwQuerySystemInformation(ULONG SystemInformationClass, PVOID SystemInformation,
 		ULONG SystemInformationLength, PULONG ReturnLength);
+
+	void* HalPrivateDispatchTable;
 }
 
 typedef struct _SYSTEM_PROCESS_INFORMATION {
@@ -155,6 +158,40 @@ typedef struct _LDR_DATA_TABLE_ENTRY_FULL {
 
 PDEVICE_OBJECT g_device_object = nullptr;
 UNICODE_STRING g_symlink_name = {};
+
+// 0x400
+
+void* o_halp_lbr_clear_stack = nullptr;
+
+uint8_t halp_lbr_clear_stack_hook() {
+	auto* process = IoGetCurrentProcess();
+	if (process)
+		*(uint64_t*)((uint8_t*)process + 0x28) = __readcr3();
+
+	if (o_halp_lbr_clear_stack)
+		return (uint8_t()(o_halp_lbr_clear_stack))();
+
+	return 0;
+}
+
+void init_hook() {
+	UNICODE_STRING routine_string = RTL_CONSTANT_STRING(L"KeSetLastBranchRecordInUse");
+	void* KeSetLastBranchRecordInUse = MmGetSystemRoutineAddress(&routine_string);
+	if (!KeSetLastBranchRecordInUse)
+		return;
+
+	int32_t rel32 = *(int32_t*)((uint8_t*)KeSetLastBranchRecordInUse + 0x8);
+	uint64_t rip = (uint64_t)KeSetLastBranchRecordInUse + 0x6;
+	auto* ki_cpu_tracing_flags = (uint32_t*)(rip + rel32 + 0x7);
+
+	if (!MmIsAddressValid(ki_cpu_tracing_flags))
+		return;
+
+	o_halp_lbr_clear_stack = *(void**)((uint8_t*)HalPrivateDispatchTable + 0x400);
+	*(void**)((uint8_t*)HalPrivateDispatchTable + 0x400) = halp_lbr_clear_stack_hook;
+
+	*ki_cpu_tracing_flags |= 2;
+}
 
 void unicode_to_ansi(UNICODE_STRING* src, char* dst, uint32_t max_len) {
 	uint32_t len = src->Length / sizeof(WCHAR);
@@ -469,6 +506,8 @@ NTSTATUS driver_initialize(PDRIVER_OBJECT driver_object, PUNICODE_STRING registr
 
 	g_device_object->Flags |= DO_BUFFERED_IO;
 	g_device_object->Flags &= ~DO_DEVICE_INITIALIZING;
+
+	init_hook();
 
 	return STATUS_SUCCESS;
 }
