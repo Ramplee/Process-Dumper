@@ -99,7 +99,7 @@ extern "C" {
 	NTSTATUS ZwQuerySystemInformation(ULONG SystemInformationClass, PVOID SystemInformation,
 		ULONG SystemInformationLength, PULONG ReturnLength);
 
-	void* HalPrivateDispatchTable;
+	extern void* HalPrivateDispatchTable;
 }
 
 typedef struct _SYSTEM_PROCESS_INFORMATION {
@@ -169,7 +169,7 @@ uint8_t halp_lbr_clear_stack_hook() {
 		*(uint64_t*)((uint8_t*)process + 0x28) = __readcr3();
 
 	if (o_halp_lbr_clear_stack)
-		return (uint8_t()(o_halp_lbr_clear_stack))();
+		return ((uint8_t(*)())o_halp_lbr_clear_stack)();
 
 	return 0;
 }
