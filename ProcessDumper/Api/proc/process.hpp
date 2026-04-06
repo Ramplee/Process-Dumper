@@ -61,14 +61,12 @@ namespace process {
         owner_cr3 = ioctl::get_cr3(owner_pid);
         if (!owner_cr3) {
             log("Failed to get cr3 of owner process");
-            ioctl::flush_logs();
             return false;
         }
 
         target_pid = ioctl::get_pid_by_name(process_name.c_str());
         if (!target_pid) {
             log("Failed to get pid of target process: %s", process_name.c_str());
-            ioctl::flush_logs();
             return false;
         }
 
@@ -81,7 +79,6 @@ namespace process {
         target_module_count = ioctl::get_ldr_data_table_entry_count(target_pid);
         if (!target_module_count) {
             log("Failed get target module count");
-            ioctl::flush_logs();
             return false;
         }
 
@@ -96,7 +93,6 @@ namespace process {
 
         if (!ioctl::get_data_table_entry_info(target_pid, target_modules)) {
             log("Failed getting data table entry info");
-            ioctl::flush_logs();
             return false;
         }
 

@@ -14,75 +14,46 @@ using uint32_t = unsigned int;
 using uint64_t = unsigned long long;
 
 struct copy_virtual_memory_t {
-	_In_ uint64_t src_pid;
-	_In_ uint64_t dst_pid;
-	_In_ void* src;
-	_In_ void* dst;
-	_In_ uint64_t size;
+	uint64_t src_pid;
+	uint64_t dst_pid;
+	void* src;
+	void* dst;
+	uint64_t size;
 };
 
 struct get_cr3_t {
-	_In_ uint64_t pid;
-	_Out_ uint64_t cr3;
-};
-
-struct get_module_base_t {
-	_In_ char module_name[MAX_PATH];
-	_In_ uint64_t pid;
-	_Out_ uint64_t module_base;
-};
-
-struct get_module_size_t {
-	_In_ char module_name[MAX_PATH];
-	_In_ uint64_t pid;
-	_Out_ uint64_t module_size;
+	uint64_t pid;
+	uint64_t cr3;
 };
 
 struct get_pid_by_name_t {
-	_In_ char name[MAX_PATH];
-	_Out_ uint64_t pid;
+	char name[MAX_PATH];
+	uint64_t pid;
 };
 
 struct get_ldr_data_table_entry_count_t {
-	_In_ uint64_t pid;
-	_Out_ uint64_t count;
+	uint64_t pid;
+	uint64_t count;
 };
 
 struct module_info_t {
-	_In_ char name[MAX_PATH];
-	_In_ uint64_t base;
-	_In_ uint64_t size;
+	char name[MAX_PATH];
+	uint64_t base;
+	uint64_t size;
 };
 
 struct cmd_get_data_table_entry_info_t {
-	_In_ uint64_t pid;
-	_In_ module_info_t* info_array;
-};
-
-#define MAX_MESSAGES 512
-#define MAX_MESSAGE_SIZE 256
-
-struct log_entry_t {
-	bool present;
-	char payload[MAX_MESSAGE_SIZE];
-};
-
-struct cmd_output_logs_t {
-	_In_ uint32_t count;
-	_In_ log_entry_t* log_array;
+	uint64_t pid;
+	module_info_t* info_array;
 };
 
 enum call_types_t : uint32_t {
 	cmd_get_pid_by_name,
 	cmd_get_cr3,
-	cmd_get_module_base,
-	cmd_get_module_size,
 	cmd_get_ldr_data_table_entry_count,
 	cmd_get_data_table_entry_info,
 	cmd_copy_virtual_memory,
-	cmd_output_logs,
 	cmd_remove_from_system_page_tables,
-	cmd_unload_driver,
 	cmd_ping_driver,
 };
 

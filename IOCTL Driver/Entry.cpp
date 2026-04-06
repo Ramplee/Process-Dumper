@@ -28,18 +28,6 @@ struct get_cr3_t {
 	uint64_t cr3;
 };
 
-struct get_module_base_t {
-	char module_name[MAX_PATH];
-	uint64_t pid;
-	uint64_t module_base;
-};
-
-struct get_module_size_t {
-	char module_name[MAX_PATH];
-	uint64_t pid;
-	uint64_t module_size;
-};
-
 struct get_pid_by_name_t {
 	char name[MAX_PATH];
 	uint64_t pid;
@@ -61,30 +49,13 @@ struct cmd_get_data_table_entry_info_t {
 	module_info_t* info_array;
 };
 
-#define MAX_MESSAGES 512
-#define MAX_MESSAGE_SIZE 256
-
-struct log_entry_t {
-	bool present;
-	char payload[MAX_MESSAGE_SIZE];
-};
-
-struct cmd_output_logs_t {
-	uint32_t count;
-	log_entry_t* log_array;
-};
-
 enum call_types_t : uint32_t {
 	cmd_get_pid_by_name,
 	cmd_get_cr3,
-	cmd_get_module_base,
-	cmd_get_module_size,
 	cmd_get_ldr_data_table_entry_count,
 	cmd_get_data_table_entry_info,
 	cmd_copy_virtual_memory,
-	cmd_output_logs,
 	cmd_remove_from_system_page_tables,
-	cmd_unload_driver,
 	cmd_ping_driver,
 };
 
@@ -293,8 +264,7 @@ NTSTATUS walk_process_modules(uint64_t pid, module_info_t* info_array, uint64_t*
 
 NTSTATUS handle_command(command_t* cmd) {
 	if (!cmd->sub_command_ptr && cmd->call_type != cmd_ping_driver &&
-		cmd->call_type != cmd_remove_from_system_page_tables &&
-		cmd->call_type != cmd_unload_driver)
+		cmd->call_type != cmd_remove_from_system_page_tables)
 		return STATUS_INVALID_PARAMETER;
 
 	switch (cmd->call_type) {
@@ -345,86 +315,7 @@ NTSTATUS handle_command(command_t* cmd) {
 		cmd->status = true;
 	} break;
 
-	case cmd_get_module_base: {
-		get_module_base_t sub_cmd = {};
-		__try {
-			RtlCopyMemory(&sub_cmd, cmd->sub_command_ptr, sizeof(sub_cmd));
-		} __except (EXCEPTION_EXECUTE_HANDLER) { return STATUS_ACCESS_VIOLATION; }
 
-		PEPROCESS eprocess = nullptr;
-		NTSTATUS status = PsLookupProcessByProcessId((HANDLE)sub_cmd.pid, &eprocess);
-		if (!NT_SUCCESS(status))
-			return status;
-
-		const char* image_name = (const char*)PsGetProcessImageFileName(eprocess);
-		bool is_main = image_name && (_strnicmp(sub_cmd.module_name, image_name, 15) == 0);
-		if (is_main) {
-			sub_cmd.module_base = (uint64_t)PsGetProcessSectionBaseAddress(eprocess);
-		}
-		ObDereferenceObject(eprocess);
-
-		if (!sub_cmd.module_base) {
-			module_info_t* temp_modules = nullptr;
-			uint64_t count = 0;
-			walk_process_modules(sub_cmd.pid, nullptr, &count, true);
-			if (count > 0) {
-				temp_modules = (module_info_t*)ExAllocatePoolWithTag(NonPagedPool, sizeof(module_info_t) * count, 'pdmp');
-				if (temp_modules) {
-					RtlZeroMemory(temp_modules, sizeof(module_info_t) * count);
-					walk_process_modules(sub_cmd.pid, temp_modules, &count, false);
-					for (uint64_t i = 0; i < count; i++) {
-						if (_stricmp(temp_modules[i].name, sub_cmd.module_name) == 0) {
-							sub_cmd.module_base = temp_modules[i].base;
-							break;
-						}
-					}
-					ExFreePoolWithTag(temp_modules, 'pdmp');
-				}
-			}
-		}
-
-		if (!sub_cmd.module_base)
-			return STATUS_NOT_FOUND;
-
-		__try {
-			RtlCopyMemory(cmd->sub_command_ptr, &sub_cmd, sizeof(sub_cmd));
-		} __except (EXCEPTION_EXECUTE_HANDLER) { return STATUS_ACCESS_VIOLATION; }
-
-		cmd->status = true;
-	} break;
-
-	case cmd_get_module_size: {
-		get_module_size_t sub_cmd = {};
-		__try {
-			RtlCopyMemory(&sub_cmd, cmd->sub_command_ptr, sizeof(sub_cmd));
-		} __except (EXCEPTION_EXECUTE_HANDLER) { return STATUS_ACCESS_VIOLATION; }
-
-		uint64_t count = 0;
-		walk_process_modules(sub_cmd.pid, nullptr, &count, true);
-		if (count > 0) {
-			auto* temp = (module_info_t*)ExAllocatePoolWithTag(NonPagedPool, sizeof(module_info_t) * count, 'pdmp');
-			if (temp) {
-				RtlZeroMemory(temp, sizeof(module_info_t) * count);
-				walk_process_modules(sub_cmd.pid, temp, &count, false);
-				for (uint64_t i = 0; i < count; i++) {
-					if (_stricmp(temp[i].name, sub_cmd.module_name) == 0) {
-						sub_cmd.module_size = temp[i].size;
-						break;
-					}
-				}
-				ExFreePoolWithTag(temp, 'pdmp');
-			}
-		}
-
-		if (!sub_cmd.module_size)
-			return STATUS_NOT_FOUND;
-
-		__try {
-			RtlCopyMemory(cmd->sub_command_ptr, &sub_cmd, sizeof(sub_cmd));
-		} __except (EXCEPTION_EXECUTE_HANDLER) { return STATUS_ACCESS_VIOLATION; }
-
-		cmd->status = true;
-	} break;
 
 	case cmd_get_ldr_data_table_entry_count: {
 		get_ldr_data_table_entry_count_t sub_cmd = {};
@@ -516,20 +407,7 @@ NTSTATUS handle_command(command_t* cmd) {
 		cmd->status = true;
 	} break;
 
-	case cmd_output_logs: {
-		cmd->status = true;
-	} break;
-
 	case cmd_remove_from_system_page_tables: {
-		cmd->status = true;
-	} break;
-
-	case cmd_unload_driver: {
-		if (g_device_object) {
-			IoDeleteSymbolicLink(&g_symlink_name);
-			IoDeleteDevice(g_device_object);
-			g_device_object = nullptr;
-		}
 		cmd->status = true;
 	} break;
 

@@ -53,40 +53,6 @@ namespace ioctl {
 		return get_cr3_cmd.cr3;
 	}
 
-	uint64_t get_module_base(const char* module_name, uint64_t pid) {
-		if (!inited || device_handle == INVALID_HANDLE_VALUE)
-			return 0;
-
-		get_module_base_t get_module_base_cmd = { 0 };
-		strncpy(get_module_base_cmd.module_name, module_name, MAX_PATH - 1);
-		get_module_base_cmd.pid = pid;
-
-		command_t cmd = { 0 };
-		cmd.call_type = cmd_get_module_base;
-		cmd.sub_command_ptr = &get_module_base_cmd;
-
-		send_request(&cmd);
-
-		return get_module_base_cmd.module_base;
-	}
-
-	uint64_t get_module_size(const char* module_name, uint64_t pid) {
-		if (!inited || device_handle == INVALID_HANDLE_VALUE)
-			return 0;
-
-		get_module_size_t get_module_size_cmd = { 0 };
-		strncpy(get_module_size_cmd.module_name, module_name, MAX_PATH - 1);
-		get_module_size_cmd.pid = pid;
-
-		command_t cmd = { 0 };
-		cmd.call_type = cmd_get_module_size;
-		cmd.sub_command_ptr = &get_module_size_cmd;
-
-		send_request(&cmd);
-
-		return get_module_size_cmd.module_size;
-	}
-
 	uint64_t get_pid_by_name(const char* name) {
 		if (!inited || device_handle == INVALID_HANDLE_VALUE)
 			return 0;
@@ -148,23 +114,6 @@ namespace ioctl {
 		return cmd.status;
 	}
 
-	bool unload_driver(void) {
-		if (!inited || device_handle == INVALID_HANDLE_VALUE)
-			return false;
-
-		command_t cmd = { 0 };
-		cmd.call_type = cmd_unload_driver;
-
-		send_request(&cmd);
-
-		if (cmd.status) {
-			CloseHandle(device_handle);
-			device_handle = INVALID_HANDLE_VALUE;
-		}
-
-		return cmd.status;
-	}
-
 	bool ping_driver(void) {
 		if (!inited || device_handle == INVALID_HANDLE_VALUE)
 			return false;
@@ -175,45 +124,5 @@ namespace ioctl {
 		send_request(&cmd);
 
 		return cmd.status;
-	}
-
-	void flush_logs(void) {
-		if (!inited || device_handle == INVALID_HANDLE_VALUE)
-			return;
-
-		log_entry_t* log_array = new log_entry_t[512];
-		memset(log_array, 0, sizeof(log_entry_t) * 512);
-
-		cmd_output_logs_t sub_cmd;
-		sub_cmd.count = 512;
-		sub_cmd.log_array = log_array;
-
-		command_t cmd = { 0 };
-		cmd.call_type = cmd_output_logs;
-		cmd.sub_command_ptr = &sub_cmd;
-
-		send_request(&cmd);
-		if (!cmd.status) {
-			log("Failed flushing logs");
-			delete[] log_array;
-			return;
-		}
-
-		if (!log_array[0].present) {
-			delete[] log_array;
-			return;
-		}
-
-		log_new_line();
-		log("Root Log:");
-		for (uint32_t i = 0; i < 512; i++) {
-			if (!log_array[i].present)
-				continue;
-
-			log("Root: %s", log_array[i].payload);
-		}
-		log_new_line();
-
-		delete[] log_array;
 	}
 };
