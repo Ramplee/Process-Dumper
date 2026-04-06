@@ -13,24 +13,24 @@ bool PeRebuilder::LoadFromBuffer(uint8_t* Buffer, uint64_t Size, uint64_t ImageB
 
 	DosHeader = reinterpret_cast<IMAGE_DOS_HEADER*>(RawBuffer);
 	if (DosHeader->e_magic != IMAGE_DOS_SIGNATURE) {
-		log("Invalid DOS signature: 0x%X", DosHeader->e_magic);
+		logging("Invalid DOS signature: 0x%X", DosHeader->e_magic);
 		return false;
 	}
 
 	NtHeaders = reinterpret_cast<IMAGE_NT_HEADERS64*>(RawBuffer + DosHeader->e_lfanew);
 	if (NtHeaders->Signature != IMAGE_NT_SIGNATURE) {
-		log("Invalid NT signature: 0x%X", NtHeaders->Signature);
+		logging("Invalid NT signature: 0x%X", NtHeaders->Signature);
 		return false;
 	}
 
 	if (NtHeaders->OptionalHeader.Magic != IMAGE_NT_OPTIONAL_HDR64_MAGIC) {
-		log("Not a 64bit PE");
+		logging("Not a 64bit PE");
 		return false;
 	}
 
 	SectionHeaders = IMAGE_FIRST_SECTION(NtHeaders);
 
-	log("PE loaded: %d sections, ImageBase: 0x%llX, ImageSize: 0x%X",
+	logging("PE loaded: %d sections, ImageBase: 0x%llX, ImageSize: 0x%X",
 		NtHeaders->FileHeader.NumberOfSections,
 		NtHeaders->OptionalHeader.ImageBase,
 		NtHeaders->OptionalHeader.SizeOfImage);
@@ -53,7 +53,7 @@ bool PeRebuilder::FixHeaders() {
 	if (SectionAlignment == 0)
 		NtHeaders->OptionalHeader.SectionAlignment = 0x1000;
 
-	log("Headers fixed: ASLR disabled, relocations stripped");
+	logging("Headers fixed: ASLR disabled, relocations stripped");
 	return true;
 }
 
@@ -79,7 +79,7 @@ bool PeRebuilder::FixSectionHeaders() {
 		if (Section.Misc.VirtualSize == 0)
 			Section.Misc.VirtualSize = Section.SizeOfRawData;
 
-		log("Section %-8.8s | VA: 0x%08X | VSize: 0x%08X | RawPtr: 0x%08X | RawSize: 0x%08X",
+		logging("Section %-8.8s | VA: 0x%08X | VSize: 0x%08X | RawPtr: 0x%08X | RawSize: 0x%08X",
 			Section.Name, Section.VirtualAddress, Section.Misc.VirtualSize,
 			Section.PointerToRawData, Section.SizeOfRawData);
 	}
@@ -95,7 +95,7 @@ bool PeRebuilder::FixImportDirectory() {
 
 	uint64_t ImportOffset = RvaToOffset(ImportDir.VirtualAddress);
 	if (ImportOffset == 0 || ImportOffset >= BufferSize) {
-		log("Import directory RVA points outside buffer");
+		logging("Import directory RVA points outside buffer");
 		return false;
 	}
 
@@ -106,13 +106,13 @@ bool PeRebuilder::FixImportDirectory() {
 		uint64_t NameOffset = RvaToOffset(ImportDesc->Name);
 		if (NameOffset && NameOffset < BufferSize) {
 			const char* DllName = reinterpret_cast<const char*>(RawBuffer + NameOffset);
-			log("Import: %s", DllName);
+			logging("Import: %s", DllName);
 		}
 		ImportDesc++;
 		ImportCount++;
 	}
 
-	log("Fixed %d import descriptors", ImportCount);
+	logging("Fixed %d import descriptors", ImportCount);
 	return true;
 }
 
@@ -121,21 +121,21 @@ bool PeRebuilder::NullRelocations() {
 	RelocDir.VirtualAddress = 0;
 	RelocDir.Size = 0;
 
-	log("Relocation directory nulled");
+	logging("Relocation directory nulled");
 	return true;
 }
 
 bool PeRebuilder::SaveToDisk(const std::string& OutputPath) {
 	std::ofstream File(OutputPath, std::ios::binary);
 	if (!File.is_open()) {
-		log("Failed to create output file: %s", OutputPath.c_str());
+		logging("Failed to create output file: %s", OutputPath.c_str());
 		return false;
 	}
 
 	File.write(reinterpret_cast<const char*>(RawBuffer), BufferSize);
 	File.close();
 
-	log("Dump saved: %s (%llu bytes)", OutputPath.c_str(), BufferSize);
+	logging("Dump saved: %s (%llu bytes)", OutputPath.c_str(), BufferSize);
 	return true;
 }
 

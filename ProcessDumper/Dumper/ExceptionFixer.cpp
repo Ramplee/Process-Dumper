@@ -1,6 +1,7 @@
 #include "ExceptionFixer.hpp"
-#include "../Api/driver/driver_includes.hpp"
+#include "../Api/proc/process.hpp"
 #include <Windows.h>
+
 
 uint32_t ExceptionFixer::Fix(uint8_t* Buffer, uint64_t BufferSize) {
 	auto* DosHdr = reinterpret_cast<IMAGE_DOS_HEADER*>(Buffer);
@@ -52,7 +53,7 @@ uint32_t ExceptionFixer::Fix(uint8_t* Buffer, uint64_t BufferSize) {
 		Removed++;
 	}
 
-	log("Exception directory: removed %u invalid entries", Removed);
+	logging("Exception directory: removed %u invalid entries", Removed);
 	return Removed;
 }
 

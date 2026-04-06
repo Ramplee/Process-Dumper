@@ -24,7 +24,7 @@
   * @param fmt The format string for the message.
   * @param ... Additional arguments for the format string.
   */
-#define log(fmt, ...) \
+#define logging(fmt, ...) \
 printf(skCrypt("[Usermode] - [%s:%d] " fmt "\n"), FILENAMES_, __LINE__, ##__VA_ARGS__)
 
   /**

@@ -25,7 +25,7 @@ bool PageMonitor::Init(uint64_t ImageBase, uint64_t ImageSize) {
 
 	ReadBuffer.resize(PageSize);
 
-	log("Initialized monitor: 0x%llX | %llu pages", ImageBase, TotalPages);
+	logging("Initialized monitor: 0x%llX | %llu pages", ImageBase, TotalPages);
 	return true;
 }
 
@@ -62,7 +62,7 @@ void PageMonitor::MonitorThread() {
 	constexpr uint64_t PageSize = 0x1000;
 	HANDLE TargetHandle = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, FALSE, (DWORD)process::target_pid);
 	if (!TargetHandle) {
-		log("Monitor could not open target handle for protection checks");
+		logging("Monitor could not open target handle for protection checks");
 		Running = false;
 		return;
 	}

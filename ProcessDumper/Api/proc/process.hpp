@@ -48,43 +48,43 @@ namespace process {
         }
 
         if (!ioctl::is_lib_inited()) {
-            log("Can't init process if the rose instance is not initialized");
+            logging("Can't init process if the rose instance is not initialized");
             return false;
         }
 
         owner_pid = GetCurrentProcessId();
         if (!owner_pid) {
-            log("Failed to get pid of owner process");
+            logging("Failed to get pid of owner process");
             return false;
         }
 
         owner_cr3 = ioctl::get_cr3(owner_pid);
         if (!owner_cr3) {
-            log("Failed to get cr3 of owner process");
+            logging("Failed to get cr3 of owner process");
             return false;
         }
 
         target_pid = ioctl::get_pid_by_name(process_name.c_str());
         if (!target_pid) {
-            log("Failed to get pid of target process: %s", process_name.c_str());
+            logging("Failed to get pid of target process: %s", process_name.c_str());
             return false;
         }
 
         target_cr3 = ioctl::get_cr3(target_pid);
         if (!target_cr3) {
-            log("Failed to get initial CR3 for target process");
+            logging("Failed to get initial CR3 for target process");
             return false;
         }
 
         target_module_count = ioctl::get_ldr_data_table_entry_count(target_pid);
         if (!target_module_count) {
-            log("Failed get target module count");
+            logging("Failed get target module count");
             return false;
         }
 
         target_modules = (module_info_t*)malloc(sizeof(module_info_t) * target_module_count);
         if (!target_modules) {
-            log("Failed to alloc memory for modules");
+            logging("Failed to alloc memory for modules");
             return false;
         }
 
@@ -92,7 +92,7 @@ namespace process {
         memset(target_modules, 0, sizeof(module_info_t) * target_module_count);
 
         if (!ioctl::get_data_table_entry_info(target_pid, target_modules)) {
-            log("Failed getting data table entry info");
+            logging("Failed getting data table entry info");
             return false;
         }
 
@@ -235,13 +235,13 @@ namespace process {
     }
 
     /**
-     * @brief Logs the names of all modules loaded in the target process.
+     * @brief loggings the names of all modules loaded in the target process.
      *
-     * Iterates over the list of loaded modules and logs each module's name.
+     * Iterates over the list of loaded modules and loggings each module's name.
      */
-    inline void log_modules(void) {
+    inline void logging_modules(void) {
         for (uint64_t i = 0; i < target_module_count - 1; i++) {
-            log("%s", target_modules[i].name);
+            logging("%s", target_modules[i].name);
         }
     }
 

@@ -36,41 +36,41 @@ int main(int argc, char* argv[]) {
 	}
 
 	if (TargetProcess.empty()) {
-		log("No process name provided");
+		logging("No process name provided");
 		return 1;
 	}
 
 	printf("\n");
-	log("Target: %s", TargetProcess.c_str());
+	logging("Target: %s", TargetProcess.c_str());
 
 	ProcessDumper Dumper;
 	Dumper.SetDecryptionThreshold(Threshold);
 
 	if (Threshold < 1.0f)
-		log("Auto-stop at %.0f%% decryption", Threshold * 100.0f);
+		logging("Auto-stop at %.0f%% decryption", Threshold * 100.0f);
 
 	if (!Dumper.Attach(TargetProcess)) {
-		log("Failed to attach to process");
+		logging("Failed to attach to process");
 		system("pause");
 		return 1;
 	}
 
 	if (!Dumper.StartMonitoring()) {
-		log("Failed to start monitoring");
+		logging("Failed to start monitoring");
 		system("pause");
 		return 1;
 	}
 
 	printf("\n");
-	log("Monitoring page decryptions...");
-	log("Press F7 to stop and dump current state\n");
+	logging("Monitoring page decryptions...");
+	logging("Press F7 to stop and dump current state\n");
 
 	while (Dumper.IsMonitoring()) {
 		PrintStatus(Dumper);
 
 		if (Threshold < 1.0f && Dumper.GetDecryptionProgress() >= Threshold) {
 			printf("\n");
-			log("Reached %.0f%% decryption threshold - auto stopping", Threshold * 100.0f);
+			logging("Reached %.0f%% decryption threshold - auto stopping", Threshold * 100.0f);
 			break;
 		}
 
@@ -87,7 +87,7 @@ int main(int argc, char* argv[]) {
 	}
 
 	printf("\n\n");
-	log("Stopping monitor...");
+	logging("Stopping monitor...");
 	Dumper.DumpCurrent();
 
 	size_t DotPos = TargetProcess.find_last_of('.');
@@ -97,13 +97,13 @@ int main(int argc, char* argv[]) {
 
 	std::string OutputPath = "dumped_" + BaseName + ".exe";
 
-	log("Rebuilding PE...");
+	logging("Rebuilding PE...");
 	if (Dumper.Rebuild(OutputPath)) {
 		printf("\n");
-		log("Dump successful: %s", OutputPath.c_str());
+		logging("Dump successful: %s", OutputPath.c_str());
 	}
 	else {
-		log("Failed to rebuild PE");
+		logging("Failed to rebuild PE");
 	}
 
 	printf("\n");

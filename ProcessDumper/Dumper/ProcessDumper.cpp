@@ -13,11 +13,11 @@ bool ProcessDumper::Attach(const std::string& ProcessName) {
 	this->ProcessName = ProcessName;
 
 	if (!process::attach_to_proc(ProcessName)) {
-		log("Failed to attach to %s", ProcessName.c_str());
+		logging("Failed to attach to %s", ProcessName.c_str());
 		return false;
 	}
 
-	log("Attached to %s (PID: %llu)", ProcessName.c_str(), process::target_pid);
+	logging("Attached to %s (PID: %llu)", ProcessName.c_str(), process::target_pid);
 
 	std::string ModuleName = ProcessName;
 	size_t DotPos = ModuleName.find_last_of('.');
@@ -26,22 +26,22 @@ bool ProcessDumper::Attach(const std::string& ProcessName) {
 
 	ImageBase = process::get_module_base(ModuleName);
 	if (!ImageBase) {
-		log("Failed to get image base for %s", ModuleName.c_str());
+		logging("Failed to get image base for %s", ModuleName.c_str());
 		return false;
 	}
 
 	ImageSize = process::get_module_size(ModuleName);
 	if (!ImageSize) {
-		log("Failed to get image size for %s", ModuleName.c_str());
+		logging("Failed to get image size for %s", ModuleName.c_str());
 		return false;
 	}
 
-	log("Image: 0x%llX | Size: 0x%llX (%llu KB)", ImageBase, ImageSize, ImageSize / 1024);
+	logging("Image: 0x%llX | Size: 0x%llX (%llu KB)", ImageBase, ImageSize, ImageSize / 1024);
 
 	DumpBuffer.resize(ImageSize, 0);
 
 	if (!ReadInitialImage())
-		log("Warning: Initial image read incomplete, monitor will fill in the rest");
+		logging("Warning: Initial image read incomplete, monitor will fill in the rest");
 
 	Attached = true;
 	return true;
@@ -49,12 +49,12 @@ bool ProcessDumper::Attach(const std::string& ProcessName) {
 
 bool ProcessDumper::StartMonitoring() {
 	if (!Attached) {
-		log("Not attached");
+		logging("Not attached");
 		return false;
 	}
 
 	if (!Monitor.Init(ImageBase, ImageSize)) {
-		log("Failed to init page monitor");
+		logging("Failed to init page monitor");
 		return false;
 	}
 
@@ -63,13 +63,13 @@ bool ProcessDumper::StartMonitoring() {
 	});
 
 	Monitor.Start();
-	log("Monitor started - scanning pages via driver");
+	logging("Monitor started - scanning pages via driver");
 	return true;
 }
 
 bool ProcessDumper::DumpCurrent() {
 	Monitor.Stop();
-	log("Monitor stopped");
+	logging("Monitor stopped");
 	return true;
 }
 
@@ -77,7 +77,7 @@ bool ProcessDumper::Rebuild(const std::string& OutputPath) {
 	std::lock_guard<std::mutex> Lock(DumpMutex);
 
 	if (!Rebuilder.LoadFromBuffer(DumpBuffer.data(), DumpBuffer.size(), ImageBase)) {
-		log("Failed to parse dump buffer");
+		logging("Failed to parse dump buffer");
 		return false;
 	}
 
@@ -90,7 +90,7 @@ bool ProcessDumper::Rebuild(const std::string& OutputPath) {
 	Resolver.Resolve(DumpBuffer, ImageBase);
 
 	if (!Rebuilder.LoadFromBuffer(DumpBuffer.data(), DumpBuffer.size(), ImageBase)) {
-		log("Failed to reparse after import resolution");
+		logging("Failed to reparse after import resolution");
 		return false;
 	}
 
@@ -145,7 +145,7 @@ bool ProcessDumper::ReadInitialImage() {
 			DiskBuffer.resize(FileSize);
 			DiskFile.read(reinterpret_cast<char*>(DiskBuffer.data()), FileSize);
 			DiskFile.close();
-			log("Loaded on-disk PE fallback: %s (%llu bytes)", DiskPath.c_str(), DiskBuffer.size());
+			logging("Loaded on-disk PE fallback: %s (%llu bytes)", DiskPath.c_str(), DiskBuffer.size());
 		}
 	}
 
@@ -168,7 +168,7 @@ bool ProcessDumper::ReadInitialImage() {
 		}
 	}
 
-	log("Initial read: %llu / %llu pages", PagesRead, TotalPages);
+	logging("Initial read: %llu / %llu pages", PagesRead, TotalPages);
 	return PagesRead > 0;
 }
 

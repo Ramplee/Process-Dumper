@@ -6,11 +6,11 @@ bool ImportResolver::Resolve(std::vector<uint8_t>& Buffer, uint64_t ImageBase) {
 	CollectExports();
 
 	if (ExportMap.empty()) {
-		log("No exports collected");
+		logging("No exports collected");
 		return false;
 	}
 
-	log("Collected %llu exports from %llu modules", ExportMap.size(), process::target_module_count);
+	logging("Collected %llu exports from %llu modules", ExportMap.size(), process::target_module_count);
 
 	ScanRdata(Buffer.data(), Buffer.size(), ImageBase);
 
@@ -19,14 +19,14 @@ bool ImportResolver::Resolve(std::vector<uint8_t>& Buffer, uint64_t ImageBase) {
 		TotalImports += Imports.size();
 
 	if (TotalImports == 0) {
-		log("No imports found in .rdata");
+		logging("No imports found in .rdata");
 		return false;
 	}
 
-	log("Found %llu imports across %llu modules", TotalImports, GroupedImports.size());
+	logging("Found %llu imports across %llu modules", TotalImports, GroupedImports.size());
 
 	if (!BuildImportSection(Buffer, ImageBase)) {
-		log("Failed to build import section");
+		logging("Failed to build import section");
 		return false;
 	}
 
@@ -160,7 +160,7 @@ bool ImportResolver::BuildImportSection(std::vector<uint8_t>& Buffer, uint64_t I
 	uint32_t HeaderSpace = (uint32_t)(
 		DosHdr->e_lfanew + sizeof(IMAGE_NT_HEADERS64) + (SectionCount + 1) * sizeof(IMAGE_SECTION_HEADER));
 	if (HeaderSpace > NtHdrs->OptionalHeader.SizeOfHeaders) {
-		log("Not enough header space for new section");
+		logging("Not enough header space for new section");
 		return false;
 	}
 
@@ -229,7 +229,7 @@ bool ImportResolver::BuildImportSection(std::vector<uint8_t>& Buffer, uint64_t I
 	ImportDir.VirtualAddress = NewSectionRva + IatSize;
 	ImportDir.Size = DescriptorSize;
 
-	log("Built .rimport section: RVA 0x%X | Size 0x%X | %llu descriptors",
+	logging("Built .rimport section: RVA 0x%X | Size 0x%X | %llu descriptors",
 		NewSectionRva, AlignedSize, GroupedImports.size());
 
 	return true;
@@ -294,7 +294,7 @@ void ImportResolver::PatchCodeReferences(std::vector<uint8_t>& Buffer, uint64_t 
 		}
 	}
 
-	log("Patched %u code references to new IAT", PatchCount);
+	logging("Patched %u code references to new IAT", PatchCount);
 }
 
 uint64_t ImportResolver::RvaToOffset(uint8_t* Buffer, uint64_t Rva) {

@@ -24,14 +24,14 @@ namespace ioctl {
 			FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr, OPEN_EXISTING, 0, nullptr);
 
 		if (device_handle == INVALID_HANDLE_VALUE) {
-			log("Failed to open driver device");
+			logging("Failed to open driver device");
 			return false;
 		}
 
 		inited = true;
 
 		if (!ping_driver()) {
-			log("Driver is not loaded");
+			logging("Driver is not loaded");
 			CloseHandle(device_handle);
 			device_handle = INVALID_HANDLE_VALUE;
 			inited = false;
