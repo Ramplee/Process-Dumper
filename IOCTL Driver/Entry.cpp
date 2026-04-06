@@ -99,7 +99,7 @@ extern "C" {
 	NTSTATUS ZwQuerySystemInformation(ULONG SystemInformationClass, PVOID SystemInformation,
 		ULONG SystemInformationLength, PULONG ReturnLength);
 
-	extern void* HalPrivateDispatchTable;
+	void* HalPrivateDispatchTable;
 }
 
 typedef struct _SYSTEM_PROCESS_INFORMATION {

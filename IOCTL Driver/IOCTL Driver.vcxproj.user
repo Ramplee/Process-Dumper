@@ -4,6 +4,6 @@
     <ShowAllFiles>true</ShowAllFiles>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <SignMode>TestSign</SignMode>
+    <SignMode>Off</SignMode>
   </PropertyGroup>
 </Project>
