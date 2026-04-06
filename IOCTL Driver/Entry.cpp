@@ -158,23 +158,45 @@ typedef struct _LDR_DATA_TABLE_ENTRY_FULL {
 
 PDEVICE_OBJECT g_device_object = nullptr;
 UNICODE_STRING g_symlink_name = {};
+static BOOLEAN g_symlink_created = FALSE;
 
-// 0x400
 
-void* o_halp_lbr_clear_stack = nullptr;
+using HalClearLastBranchRecordStack_t = BOOLEAN(NTAPI*)(VOID);
 
-uint8_t halp_lbr_clear_stack_hook() {
-	auto* process = IoGetCurrentProcess();
+static HalClearLastBranchRecordStack_t o_halp_lbr_clear_stack = nullptr;
+static uint32_t* g_ki_cpu_tracing_flags = nullptr;
+
+static BOOLEAN halp_lbr_clear_stack_hook() {
+	PVOID process = IoGetCurrentProcess();
 	if (process)
 		*(uint64_t*)((uint8_t*)process + 0x28) = __readcr3();
 
 	if (o_halp_lbr_clear_stack)
-		return (uint8_t()(o_halp_lbr_clear_stack))();
+		return o_halp_lbr_clear_stack();
 
-	return 0;
+	return FALSE;
 }
 
-void init_hook() {
+static void uninit_hook() {
+	if (g_ki_cpu_tracing_flags) {
+		*g_ki_cpu_tracing_flags &= ~2u;
+		g_ki_cpu_tracing_flags = nullptr;
+	}
+
+	if (o_halp_lbr_clear_stack && HalPrivateDispatchTable) {
+		auto* slot = (void**)((uint8_t*)HalPrivateDispatchTable + 0x400);
+		*slot = (void*)o_halp_lbr_clear_stack;
+		o_halp_lbr_clear_stack = nullptr;
+	}
+}
+
+static void init_hook() {
+	if (o_halp_lbr_clear_stack || g_ki_cpu_tracing_flags)
+		return;
+
+	if (!HalPrivateDispatchTable)
+		return;
+
 	UNICODE_STRING routine_string = RTL_CONSTANT_STRING(L"KeSetLastBranchRecordInUse");
 	void* KeSetLastBranchRecordInUse = MmGetSystemRoutineAddress(&routine_string);
 	if (!KeSetLastBranchRecordInUse)
@@ -187,10 +209,15 @@ void init_hook() {
 	if (!MmIsAddressValid(ki_cpu_tracing_flags))
 		return;
 
-	o_halp_lbr_clear_stack = *(void**)((uint8_t*)HalPrivateDispatchTable + 0x400);
-	*(void**)((uint8_t*)HalPrivateDispatchTable + 0x400) = halp_lbr_clear_stack_hook;
+	auto* slot = (void**)((uint8_t*)HalPrivateDispatchTable + 0x400);
+	void* original = *slot;
+	if (!original)
+		return;
 
-	*ki_cpu_tracing_flags |= 2;
+	o_halp_lbr_clear_stack = (HalClearLastBranchRecordStack_t)original;
+	*slot = (void*)halp_lbr_clear_stack_hook;
+	g_ki_cpu_tracing_flags = ki_cpu_tracing_flags;
+	*g_ki_cpu_tracing_flags |= 2u;
 }
 
 void unicode_to_ansi(UNICODE_STRING* src, char* dst, uint32_t max_len) {
@@ -482,8 +509,25 @@ NTSTATUS create_close_dispatch(PDEVICE_OBJECT device, PIRP irp) {
 	return STATUS_SUCCESS;
 }
 
+static void driver_unload(PDRIVER_OBJECT driver_object) {
+	UNREFERENCED_PARAMETER(driver_object);
+
+	uninit_hook();
+
+	if (g_symlink_created) {
+		IoDeleteSymbolicLink(&g_symlink_name);
+		g_symlink_created = FALSE;
+	}
+	if (g_device_object) {
+		IoDeleteDevice(g_device_object);
+		g_device_object = nullptr;
+	}
+}
+
 NTSTATUS driver_initialize(PDRIVER_OBJECT driver_object, PUNICODE_STRING registry_path) {
 	UNREFERENCED_PARAMETER(registry_path);
+
+	driver_object->DriverUnload = driver_unload;
 
 	UNICODE_STRING device_name;
 	RtlInitUnicodeString(&device_name, DEVICE_NAME);
@@ -497,8 +541,10 @@ NTSTATUS driver_initialize(PDRIVER_OBJECT driver_object, PUNICODE_STRING registr
 	status = IoCreateSymbolicLink(&g_symlink_name, &device_name);
 	if (!NT_SUCCESS(status)) {
 		IoDeleteDevice(g_device_object);
+		g_device_object = nullptr;
 		return status;
 	}
+	g_symlink_created = TRUE;
 
 	driver_object->MajorFunction[IRP_MJ_CREATE] = create_close_dispatch;
 	driver_object->MajorFunction[IRP_MJ_CLOSE] = create_close_dispatch;
